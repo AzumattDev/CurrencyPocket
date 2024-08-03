@@ -1,0 +1,9 @@
+{
+  "name": "CurrencyPocket",
+  "version_number": "1.0.0",
+  "website_url": "https://discord.gg/pdHgy6Bsng",
+  "description": "Adds a simple UI and a bit of functionality to store your coins in a \"bank\" on the player.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2202"
+  ]
+}
