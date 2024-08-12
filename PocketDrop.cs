@@ -80,7 +80,7 @@ namespace CurrencyPocket
         {
             if (___m_dragInventory == null || !___m_dragInventory.ContainsItem(___m_dragItem)) return;
             Player? player = Player.m_localPlayer;
-            if (player.m_inventory != ___m_dragInventory || ___m_dragItem.m_shared.m_name != "$item_coins" || !PocketDrop.clicked) return;
+            if (___m_dragItem.m_shared.m_name != "$item_coins" || !PocketDrop.clicked) return;
             if (___m_dragAmount <= 0) return;
             if (___m_dragAmount == ___m_dragItem.m_stack)
             {

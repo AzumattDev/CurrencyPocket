@@ -27,7 +27,7 @@ public class CurrencyPocket
         {
             if (pocketUI == null)
             {
-                CreatePocketUI1(__instance);
+                CreatePocketUI(__instance);
             }
 
             // Ran once when the inventory is opened
@@ -111,7 +111,7 @@ public class CurrencyPocket
         }
     }
 
-    [HarmonyPatch(typeof(Player), nameof(Player.UpdateKnownRecipesList))]
+    /*[HarmonyPatch(typeof(Player), nameof(Player.UpdateKnownRecipesList))]
     static class UpdateKnownRecipesListPatch
     {
         internal static bool skip;
@@ -125,9 +125,9 @@ public class CurrencyPocket
         {
             skip = false;
         }
-    }
+    }*/
 
-    [HarmonyPatch(typeof(Player), nameof(Player.ConsumeResources))]
+    /*[HarmonyPatch(typeof(Player), nameof(Player.ConsumeResources))]
     static class ConsumeResourcesPatch
     {
         static bool Prefix(Player __instance, Piece.Requirement[] requirements, int qualityLevel, int itemQuality = -1)
@@ -377,11 +377,11 @@ public class CurrencyPocket
             {
             }
         }
-    }
+    }*/
 
 
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.Pickup))]
-    private static class AddItemToBackpack
+    private static class AddItemToInventory
     {
         [HarmonyPriority(Priority.LowerThanNormal)]
         private static bool Prefix(Humanoid __instance, GameObject go, bool autoPickupDelay, bool __runOriginal, ref bool __result)
@@ -438,6 +438,72 @@ public class CurrencyPocket
         }
     }
 
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData))]
+    static class TransferBetweenInventories
+    {
+        static bool Prefix(Inventory __instance, Inventory fromInventory, ItemDrop.ItemData item)
+        {
+            if (Player.m_localPlayer == null) return true;
+            if (InventoryGui.instance != null && InventoryGui.instance.m_currentContainer != null && fromInventory == InventoryGui.instance.m_currentContainer.GetInventory())
+            {
+                if (item.m_shared.m_name != "$item_coins" || __instance != Player.m_localPlayer.GetInventory()) return true;
+                MiscFunctions.GetPlayerCoinsFromCustomData();
+                MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + item.m_stack);
+                CurrencyPocket.UpdatePocketUI();
+                if (CouldAdd(__instance, item))
+                    fromInventory.RemoveItem(item);
+                __instance.Changed();
+                fromInventory.Changed();
+                return false;
+            }
+
+            return true;
+        }
+
+        public static bool CouldAdd(Inventory inventory, ItemDrop.ItemData item)
+        {
+            bool flag = true;
+            if (item.m_shared.m_maxStackSize > 1)
+            {
+                for (int index = 0; index < item.m_stack; ++index)
+                {
+                    ItemDrop.ItemData freeStackItem = inventory.FindFreeStackItem(item.m_shared.m_name, item.m_quality, (float)item.m_worldLevel);
+                    if (freeStackItem != null)
+                    {
+                        ++freeStackItem.m_stack;
+                    }
+                    else
+                    {
+                        int num = item.m_stack - index;
+                        item.m_stack = num;
+                        Vector2i emptySlot = inventory.FindEmptySlot(inventory.TopFirst(item));
+                        if (emptySlot.x >= 0)
+                        {
+                            // Simply do not add the item
+                            break;
+                        }
+
+                        flag = false;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                Vector2i emptySlot = inventory.FindEmptySlot(inventory.TopFirst(item));
+                if (emptySlot.x >= 0)
+                {
+                    // Simply do not add the item
+                }
+                else
+                    flag = false;
+            }
+
+            inventory.Changed();
+            return flag;
+        }
+    }
+
 
     internal static void UpdatePocketUI()
     {
@@ -450,7 +516,7 @@ public class CurrencyPocket
         coinTextTMP.text = $"{MiscFunctions.GetPlayerCoinsFromCustomData()}";
     }
 
-    private static void CreatePocketUI1(InventoryGui instance)
+    private static void CreatePocketUI(InventoryGui instance)
     {
         Transform inv = instance.m_player.transform;
         InventoryGuiUpdatePatch.pocketUI = Object.Instantiate(inv.Find("Armor").gameObject, inv);
@@ -526,8 +592,14 @@ static class InventoryGuiOnSplitOkPatch
         if (player.GetInventory().CanAddItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value))
         {
             CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"{__instance.m_splitItem} {__instance.m_splitInventory} {(int)__instance.m_splitSlider.value}");
-            player.GetInventory().AddItem(__instance.m_splitItem.m_dropPrefab, (int)__instance.m_splitSlider.value);
-            __instance.m_splitInventory.RemoveItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value);
+            if (__instance.m_currentContainer == null)
+            {
+                player.GetInventory().AddItem(__instance.m_splitItem.m_dropPrefab, (int)__instance.m_splitSlider.value);
+                __instance.m_splitInventory.RemoveItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value);
+                __instance.SetupDragItem(__instance.m_splitItem, __instance.m_splitInventory, (int)__instance.m_splitSlider.value);
+            }
+
+
             MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
             CurrencyPocket.UpdatePocketUI();
             CurrencyPocket.coinExtractionInProgress = false;

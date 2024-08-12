@@ -1,3 +1,4 @@
-| `Version` | `Update Notes`    |
-|-----------|-------------------|
-| 1.0.0     | - Initial Release |
+| `Version` | `Update Notes`                                                                                                                                                                                                                                                                                                    |
+|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1.0.1     | - Temp remove the ability to build/craft objects using the coins in the pocket. This prevents unlimited resource use and also removes the text overrides in the crafting menu. Will revisit later.<br/> - Auto add to pocket directly when moving from container to player inventory (if using moving modifiers). |
+| 1.0.0     | - Initial Release                                                                                                                                                                                                                                                                                                 |
