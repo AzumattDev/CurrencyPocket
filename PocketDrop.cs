@@ -39,7 +39,7 @@ namespace CurrencyPocket
         {
             TryCreateTooltip();
             if (!InventoryGui.m_instance || uiTooltip == null || !InventoryGui.m_instance.m_dragGo || InventoryGui.m_instance.m_dragItem == null) return;
-            CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"GameObject null? {InventoryGui.m_instance.m_dragGo == null} && Item null?{InventoryGui.m_instance.m_dragItem != null}");
+            CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"GameObject null? {InventoryGui.m_instance.m_dragGo == null} && Item null? {InventoryGui.m_instance.m_dragItem == null}");
             uiTooltip.Set("Coin Drop", "Click here to store coins in your pocket.");
             uiTooltip.OnHoverStart(gameObject);
         }
@@ -54,13 +54,26 @@ namespace CurrencyPocket
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (!InventoryGui.m_instance || !InventoryGui.m_instance.m_dragGo || InventoryGui.m_instance.m_dragItem == null || InventoryGui.m_instance.m_dragItem.m_shared.m_name != "$item_coins") return;
-            // Get the item being dragged and the stack size
+            if (!InventoryGui.m_instance || !InventoryGui.m_instance.m_dragGo || InventoryGui.m_instance.m_dragItem == null || InventoryGui.m_instance.m_dragItem.m_shared.m_name != "$item_coins" || InventoryGui.m_instance.m_dragInventory == null) return;
             clicked = true;
             // Add to the pocket
-            MiscFunctions.GetPlayerCoinsFromCustomData();
-            MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + InventoryGui.m_instance.m_dragItem.m_stack);
+            MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + InventoryGui.m_instance.m_dragAmount);
             CurrencyPocket.UpdatePocketUI();
+            if (InventoryGui.m_instance.m_dragAmount == InventoryGui.m_instance.m_dragItem.m_stack)
+            {
+                CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"Removing item from inventory with name: {InventoryGui.m_instance.m_dragItem.m_shared.m_name} and inventory name: {InventoryGui.m_instance.m_dragInventory.m_name}");
+                InventoryGui.m_instance.m_dragInventory.RemoveItem(InventoryGui.m_instance.m_dragItem);
+                PocketDrop.clicked = false;
+            }
+            else
+            {
+                CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"Removing {InventoryGui.m_instance.m_dragAmount} coins from inventory with name: {InventoryGui.m_instance.m_dragItem.m_shared.m_name} and inventory name: {InventoryGui.m_instance.m_dragInventory.m_name}");
+                InventoryGui.m_instance.m_dragInventory.RemoveItem(InventoryGui.m_instance.m_dragItem, InventoryGui.m_instance.m_dragAmount);
+                PocketDrop.clicked = false;
+            }
+
+            InventoryGui.m_instance.SetupDragItem(null, null, 1);
+            InventoryGuiOnSplitOkPatch.throwAwayInventory = null!;
         }
 
         private void TryCreateTooltip()
@@ -73,7 +86,7 @@ namespace CurrencyPocket
         }
     }
 
-    [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateItemDrag))]
+    /*[HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateItemDrag))]
     static class InventoryGuiUpdateItemDragPatch
     {
         static void Postfix(InventoryGui __instance, ItemDrop.ItemData ___m_dragItem, Inventory ___m_dragInventory, int ___m_dragAmount)
@@ -84,17 +97,26 @@ namespace CurrencyPocket
             if (___m_dragAmount <= 0) return;
             if (___m_dragAmount == ___m_dragItem.m_stack)
             {
+                CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"Removing item from inventory with name: {___m_dragItem.m_shared.m_name} and inventory name: {___m_dragInventory.m_name}");
                 ___m_dragInventory.RemoveItem(___m_dragItem);
                 PocketDrop.clicked = false;
             }
             else
             {
+                CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"Removing {___m_dragAmount} coins from inventory with name: {___m_dragItem.m_shared.m_name} and inventory name: {___m_dragInventory.m_name}");
                 ___m_dragInventory.RemoveItem(___m_dragItem, ___m_dragAmount);
                 PocketDrop.clicked = false;
             }
 
-            InventoryGui.m_instance.SetupDragItem(null, null, 0);
-            InventoryGui.m_instance.UpdateCraftingPanel();
+            if (__instance.m_currentContainer == null && __instance.m_dragInventory.m_name == CurrencyPocket.CoinCountCustomData)
+            {
+                __instance.SetupDragItem(___m_dragItem, ___m_dragInventory, ___m_dragAmount);
+            }
+            else
+            {
+                InventoryGui.m_instance.SetupDragItem(null, null, 1);
+                InventoryGui.m_instance.UpdateCraftingPanel();
+            }
         }
-    }
+    }*/
 }

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using BepInEx.Bootstrap;
 using HarmonyLib;
 using TMPro;
@@ -450,8 +452,8 @@ public class CurrencyPocket
                 MiscFunctions.GetPlayerCoinsFromCustomData();
                 MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + item.m_stack);
                 CurrencyPocket.UpdatePocketUI();
-                if (CouldAdd(__instance, item))
-                    fromInventory.RemoveItem(item);
+                // if (CouldAdd(__instance, item))
+                fromInventory.RemoveItem(item);
                 __instance.Changed();
                 fromInventory.Changed();
                 return false;
@@ -581,23 +583,28 @@ public class CurrencyPocket
 static class InventoryGuiOnSplitOkPatch
 {
     internal static Inventory throwAwayInventory = null!;
+    internal static int RemoveCount = 0;
 
-    static void Prefix(InventoryGui __instance)
+    internal static void Prefix(InventoryGui __instance)
     {
         if (__instance.m_splitItem?.m_shared.m_name != "$item_coins" || !CurrencyPocket.coinExtractionInProgress) return;
         // Needed because the split inventory sometimes is auto set to the player's inventory. Workaround for now.
-        __instance.m_splitInventory = throwAwayInventory;
+        //  __instance.m_splitInventory = throwAwayInventory;
 
         Player? player = Player.m_localPlayer;
-        if (player.GetInventory().CanAddItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value))
+        //__instance.m_splitInventory.RemoveItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value);
+        //__instance.SetupDragItem(__instance.m_splitItem, __instance.m_splitInventory, (int)__instance.m_splitSlider.value);
+        RemoveCount = (int)__instance.m_splitSlider.value;
+        /*MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
+        CurrencyPocket.UpdatePocketUI();
+        CurrencyPocket.coinExtractionInProgress = false;*/
+        /*if (player.GetInventory().CanAddItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value))
         {
-            CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"{__instance.m_splitItem} {__instance.m_splitInventory} {(int)__instance.m_splitSlider.value}");
-            if (__instance.m_currentContainer == null)
-            {
-                player.GetInventory().AddItem(__instance.m_splitItem.m_dropPrefab, (int)__instance.m_splitSlider.value);
-                __instance.m_splitInventory.RemoveItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value);
-                __instance.SetupDragItem(__instance.m_splitItem, __instance.m_splitInventory, (int)__instance.m_splitSlider.value);
-            }
+            CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"{__instance.m_splitItem} {__instance.m_splitInventory.m_name} {(int)__instance.m_splitSlider.value}");
+
+            //player.GetInventory().AddItem(__instance.m_splitItem.m_dropPrefab, (int)__instance.m_splitSlider.value);
+            //__instance.m_splitInventory.RemoveItem(__instance.m_splitItem, (int)__instance.m_splitSlider.value);
+           // __instance.SetupDragItem(__instance.m_splitItem, __instance.m_splitInventory, (int)__instance.m_splitSlider.value);
 
 
             MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
@@ -608,7 +615,89 @@ static class InventoryGuiOnSplitOkPatch
         else
         {
             player.Message(MessageHud.MessageType.Center, "$inventory_full");
+            throwAwayInventory = null!;
             CurrencyPocket.coinExtractionInProgress = false;
+        }*/
+    }
+
+    internal static void Postfix()
+    {
+        MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() - RemoveCount);
+        CurrencyPocket.UpdatePocketUI();
+        CurrencyPocket.coinExtractionInProgress = false;
+    }
+}
+
+[HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateContainer))]
+public static class PreventDragItemDestruction
+{
+    [HarmonyEmitIL]
+    static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+    {
+        var codes = new List<CodeInstruction>(instructions);
+        Label skipLabel = il.DefineLabel();
+
+        Debug.Log("Starting IL Transpiler for UpdateContainer");
+
+        for (int i = 0; i < codes.Count; i++)
+        {
+            if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo method && method.Name == "SetupDragItem")
+            {
+                Debug.Log("Found SetupDragItem call");
+
+                // Insert a null check for m_dragInventory before the SetupDragItem call
+                codes.InsertRange(i, new List<CodeInstruction>
+                {
+                    new CodeInstruction(OpCodes.Ldarg_0), // Load `this`
+                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(InventoryGui), "m_dragInventory")), // Load m_dragInventory
+                    new CodeInstruction(OpCodes.Brfalse_S, skipLabel), // If m_dragInventory is null, skip to skipLabel
+                });
+
+                // Move to the instruction right after SetupDragItem
+                i += 3;
+
+                // Label the instruction immediately following SetupDragItem
+                codes[i].labels.Add(skipLabel);
+
+                Debug.Log("Inserted null check and applied skip label.");
+                break;
+            }
         }
+
+        Debug.Log("Completed IL Transpiler for UpdateContainer");
+        return codes.AsEnumerable();
+    }
+}
+
+[HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupDragItem))]
+static class CheckStuff
+{
+    static void Prefix(InventoryGui __instance, ItemDrop.ItemData item, Inventory inventory, int amount)
+    {
+        if (__instance.m_dragGo)
+        {
+            CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo("Destroying drag item");
+            // Base game code would do this:
+            /*UnityEngine.Object.Destroy((UnityEngine.Object)__instance.m_dragGo);
+            __instance.m_dragGo = (GameObject)null;
+            __instance.m_dragItem = (ItemDrop.ItemData)null;
+            __instance.m_dragInventory = (Inventory)null;
+            __instance.m_dragAmount = 0;*/
+        }
+
+        if (item == null)
+        {
+            CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo("Item is null");
+            return;
+        }
+
+        CurrencyPocketPlugin.CurrencyPocketLogger.LogInfo($"Setting up drag item {item.m_shared.m_name} {inventory.m_name} {amount}");
+        // Base game code would do this:
+        /*__instance.m_dragGo = UnityEngine.Object.Instantiate<GameObject>(__instance.m_dragItemPrefab, __instance.transform);
+        __instance.m_dragItem = item;
+        __instance.m_dragInventory = inventory;
+        __instance.m_dragAmount = amount;
+        __instance.m_moveItemEffects.Create(__instance.transform.position, Quaternion.identity);
+        UITooltip.HideTooltip();*/
     }
 }
