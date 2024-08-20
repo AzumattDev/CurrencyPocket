@@ -36,7 +36,7 @@ public class MiscFunctions
             if (totalRequirement <= 0) continue;
 
             string reqName = requirement.m_resItem.m_itemData.m_shared.m_name;
-            if (reqName == "$item_coins")
+            if (reqName == CurrencyPocket.CoinToken)
             {
                 int coins = instance.m_customData.TryGetValue(CurrencyPocket.CoinCountCustomData, out string coinCount) ? int.Parse(coinCount) : 0;
                 // Remove coins from player custom data in the amount
@@ -86,7 +86,7 @@ public class MiscFunctions
             InventoryGuiOnSplitOkPatch.throwAwayInventory = new Inventory(CurrencyPocket.CoinCountCustomData, coins.GetComponent<ItemDrop>().m_itemData.GetIcon(), 1, 1);
             InventoryGuiOnSplitOkPatch.throwAwayInventory.AddItem(coins, GetPlayerCoinsFromCustomData());
             InventoryGui.instance.ShowSplitDialog(InventoryGuiOnSplitOkPatch.throwAwayInventory.m_inventory.FirstOrDefault(), InventoryGuiOnSplitOkPatch.throwAwayInventory);
-            CurrencyPocket.coinExtractionInProgress = true;
+            CurrencyPocket.CoinExtractionInProgress = true;
             // TODO: Might add this as a config later, to extract all coins.
             /*if (player.GetInventory().CanAddItem(coins, _coinCount))
             {

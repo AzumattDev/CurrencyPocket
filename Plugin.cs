@@ -6,6 +6,7 @@ using System.Reflection;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using CurrencyPocket.Compatibility;
 using HarmonyLib;
 using JetBrains.Annotations;
 using UnityEngine;
@@ -16,18 +17,25 @@ namespace CurrencyPocket
     public class CurrencyPocketPlugin : BaseUnityPlugin
     {
         internal const string ModName = "CurrencyPocket";
-        internal const string ModVersion = "1.0.1";
+        internal const string ModVersion = "1.0.2";
         internal const string Author = "Azumatt";
         private const string ModGUID = $"{Author}.{ModName}";
-        private readonly Harmony _harmony = new(ModGUID);
+        internal readonly Harmony _harmony = new(ModGUID);
         public static readonly ManualLogSource CurrencyPocketLogger = BepInEx.Logging.Logger.CreateLogSource(ModName);
         internal static Sprite DownloadSprite = null!;
+        public static CurrencyPocketPlugin instance = null!;
 
         public void Awake()
         {
+            instance = this;
             Assembly assembly = Assembly.GetExecutingAssembly();
             _harmony.PatchAll(assembly);
             DownloadSprite = loadSprite("download.png");
+        }
+
+        public void Start()
+        {
+            RapidLoadoutsCompat.Init();
         }
 
 
