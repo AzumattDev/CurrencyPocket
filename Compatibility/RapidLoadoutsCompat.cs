@@ -24,7 +24,7 @@ public class RapidLoadoutsCompat
     {
         if (Player.m_localPlayer != null && ___m_coinPrefab != null)
         {
-            if (___m_coinPrefab.m_itemData.m_shared.m_name == "$item_coins")
+            if (___m_coinPrefab.m_itemData.m_shared.m_name == CurrencyPocket.CoinToken)
             {
                 __result += Player.m_localPlayer.m_customData.TryGetValue(CurrencyPocket.CoinCountCustomData, out string coinCount) ? int.Parse(coinCount) : 0;
             }

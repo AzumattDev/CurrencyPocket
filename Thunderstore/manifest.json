@@ -1,6 +1,6 @@
 {
   "name": "CurrencyPocket",
-  "version_number": "1.0.2",
+  "version_number": "1.0.3",
   "website_url": "https://discord.gg/pdHgy6Bsng",
   "description": "Adds a simple UI and a bit of functionality to store your coins in a \"bank\" on the player.",
   "dependencies": [

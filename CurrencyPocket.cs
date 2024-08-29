@@ -590,7 +590,7 @@ static class InventoryGuiOnSplitOkPatch
 
     internal static void Prefix(InventoryGui __instance)
     {
-        if (__instance.m_splitItem?.m_shared.m_name != "$item_coins" || !CurrencyPocket.CoinExtractionInProgress) return;
+        if (__instance.m_splitItem?.m_shared.m_name != CurrencyPocket.CoinToken || !CurrencyPocket.CoinExtractionInProgress) return;
         // Needed because the split inventory sometimes is auto set to the player's inventory. Workaround for now.
         __instance.m_splitInventory = throwAwayInventory;
         MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
