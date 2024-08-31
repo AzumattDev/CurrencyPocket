@@ -17,7 +17,7 @@ namespace CurrencyPocket
     public class CurrencyPocketPlugin : BaseUnityPlugin
     {
         internal const string ModName = "CurrencyPocket";
-        internal const string ModVersion = "1.0.3";
+        internal const string ModVersion = "1.0.4";
         internal const string Author = "Azumatt";
         private const string ModGUID = $"{Author}.{ModName}";
         internal readonly Harmony _harmony = new(ModGUID);

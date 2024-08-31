@@ -425,6 +425,20 @@ public class CurrencyPocket
         private static void Finalizer() => PickingUp = false;
     }
 
+
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.CanAddItem), typeof(ItemDrop.ItemData), typeof(int))]
+    private static class AutoPickupItemsWithFullInventory
+    {
+        private static void Postfix(Inventory __instance, ItemDrop.ItemData item, ref bool __result)
+        {
+            if (__result || !CheckAutoPickupActive.PickingUp) return;
+            if (item?.m_shared?.m_name == CoinToken)
+            {
+                __result = true;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.RemoveItem), new System.Type[] { typeof(string), typeof(int), typeof(int), typeof(bool) })]
     public static class Inventory_RemoveItem_Patch
     {
