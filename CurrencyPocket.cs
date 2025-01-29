@@ -444,6 +444,7 @@ public class CurrencyPocket
     {
         public static void Postfix(Inventory __instance, string name, int amount, int itemQuality, bool worldLevelBased)
         {
+            if(Player.m_localPlayer == null) return;
             if (__instance == Player.m_localPlayer.GetInventory())
             {
                 int coinCount = MiscFunctions.GetPlayerCoinsFromCustomData();
