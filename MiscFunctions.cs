@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using BepInEx;
 using UnityEngine;
+using static CurrencyPocket.Constants;
 
 namespace CurrencyPocket;
 
@@ -36,9 +38,9 @@ public class MiscFunctions
             if (totalRequirement <= 0) continue;
 
             string reqName = requirement.m_resItem.m_itemData.m_shared.m_name;
-            if (reqName == CurrencyPocket.CoinToken)
+            if (reqName == CoinToken)
             {
-                int coins = instance.m_customData.TryGetValue(CurrencyPocket.CoinCountCustomData, out string coinCount) ? int.Parse(coinCount) : 0;
+                int coins = instance.m_customData.TryGetValue(CoinCountCustomData, out string coinCount) ? int.Parse(coinCount) : 0;
                 // Remove coins from player custom data in the amount
                 UpdatePlayerCustomData(coins - (Math.Min(coins, totalRequirement)), instance);
                 CurrencyPocket.UpdatePocketUI();
@@ -60,7 +62,7 @@ public class MiscFunctions
 
         if (player != null)
         {
-            player.m_customData[CurrencyPocket.CoinCountCustomData] = coinCount.ToString();
+            player.m_customData[CoinCountCustomData] = coinCount.ToString();
         }
     }
 
@@ -68,7 +70,7 @@ public class MiscFunctions
     {
         Player player = Player.m_localPlayer;
 
-        if (player != null && player.m_customData.TryGetValue(CurrencyPocket.CoinCountCustomData, out string coinCount))
+        if (player != null && player.m_customData.TryGetValue(CoinCountCustomData, out string coinCount))
         {
             return int.Parse(coinCount);
         }
@@ -82,8 +84,8 @@ public class MiscFunctions
         Player player = Player.m_localPlayer;
         if (player != null && GetPlayerCoinsFromCustomData() > 0)
         {
-            GameObject? coins = ObjectDB.instance.GetItemPrefab("Coins");
-            InventoryGuiOnSplitOkPatch.throwAwayInventory = new Inventory(CurrencyPocket.CoinCountCustomData, coins.GetComponent<ItemDrop>().m_itemData.GetIcon(), 1, 1);
+            GameObject? coins = ObjectDB.instance.GetItemPrefab(CoinsPrefabName);
+            InventoryGuiOnSplitOkPatch.throwAwayInventory = new Inventory(CoinCountCustomData, coins.GetComponent<ItemDrop>().m_itemData.GetIcon(), 1, 1);
             InventoryGuiOnSplitOkPatch.throwAwayInventory.AddItem(coins, GetPlayerCoinsFromCustomData());
             InventoryGui.instance.ShowSplitDialog(InventoryGuiOnSplitOkPatch.throwAwayInventory.m_inventory.FirstOrDefault(), InventoryGuiOnSplitOkPatch.throwAwayInventory);
             CurrencyPocket.CoinExtractionInProgress = true;
@@ -99,5 +101,11 @@ public class MiscFunctions
                  player.Message(MessageHud.MessageType.Center, "$inventory_full");
             }*/
         }
+    }
+
+    internal static bool IsOverlappingUIModInstalled()
+    {
+        Dictionary<string, PluginInfo>? pluginInfos = BepInEx.Bootstrap.Chainloader.PluginInfos;
+        return pluginInfos.ContainsKey(QuickStackStoreGUID) || pluginInfos.ContainsKey(JewelcraftingGUID);
     }
 }

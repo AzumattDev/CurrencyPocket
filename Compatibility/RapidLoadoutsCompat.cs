@@ -2,6 +2,7 @@
 using BepInEx.Bootstrap;
 using HarmonyLib;
 using UnityEngine;
+using static CurrencyPocket.Constants;
 
 namespace CurrencyPocket.Compatibility;
 
@@ -9,7 +10,7 @@ public class RapidLoadoutsCompat
 {
     public static void Init()
     {
-        if (Chainloader.PluginInfos.TryGetValue("Azumatt.RapidLoadouts", out PluginInfo rapidLoadoutsInfo))
+        if (Chainloader.PluginInfos.TryGetValue(RapidLoadoutsGUID, out PluginInfo rapidLoadoutsInfo))
         {
             if (rapidLoadoutsInfo != null && rapidLoadoutsInfo.Instance != null)
             {
@@ -24,9 +25,9 @@ public class RapidLoadoutsCompat
     {
         if (Player.m_localPlayer != null && ___m_coinPrefab != null)
         {
-            if (___m_coinPrefab.m_itemData.m_shared.m_name == CurrencyPocket.CoinToken)
+            if (___m_coinPrefab.m_itemData.m_shared.m_name == CoinToken)
             {
-                __result += Player.m_localPlayer.m_customData.TryGetValue(CurrencyPocket.CoinCountCustomData, out string coinCount) ? int.Parse(coinCount) : 0;
+                __result += Player.m_localPlayer.m_customData.TryGetValue(CoinCountCustomData, out string coinCount) ? int.Parse(coinCount) : 0;
             }
         }
     }

@@ -11,13 +11,13 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
+using static CurrencyPocket.MiscFunctions;
+using static CurrencyPocket.Constants;
 
 namespace CurrencyPocket;
 
 public class CurrencyPocket
 {
-    internal const string CoinCountCustomData = "CoinPocket_CoinCount";
-    internal const string CoinToken = "$item_coins";
     internal static bool CoinExtractionInProgress = false;
 
     [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
@@ -27,7 +27,8 @@ public class CurrencyPocket
         public static GameObject pocketUI = null!;
         public static Sprite coinSprite = null!;
 
-        [HarmonyAfter("org.bepinex.plugins.jewelcrafting")]
+
+        [HarmonyAfter(JewelcraftingGUID)]
         static void Postfix(InventoryGui __instance)
         {
             if (pocketUI == null)
@@ -73,25 +74,36 @@ public class CurrencyPocket
                 for (int i = 0; i < inv.childCount; ++i)
                 {
                     Transform child = inv.GetChild(i);
-                    if (child.name is "Armor" or "Weight" or "Jewelcrafting Synergy" or "CoinPocketUI" or "Trash")
+                    if (child.name is ArmorName or WeightName or JewelcraftingSynergyName or CoinPocketUIName or TrashButtonName)
                     {
                         RectTransform? rect = child.gameObject.GetComponent<RectTransform>();
                         if (rect != null)
                         {
-                            rect.anchoredPosition += new Vector2(0, 45);
+                            switch (child.name)
+                            {
+                                case CoinPocketUIName when !IsOverlappingUIModInstalled():
+                                    rect.anchoredPosition += new Vector2(0, -45);
+                                    break;
+                                case WeightName when !IsOverlappingUIModInstalled():
+                                    // Do nothing
+                                    break;
+                                default:
+                                    rect.anchoredPosition += new Vector2(0, 45);
+                                    break;
+                            }
                         }
                     }
 
-                    if (Chainloader.PluginInfos.ContainsKey("randyknapp.mods.equipmentandquickslots") || Chainloader.PluginInfos.ContainsKey("Azumatt.AzuExtendedPlayerInventory"))
+                    if (Chainloader.PluginInfos.ContainsKey(RandyQuickslots) || Chainloader.PluginInfos.ContainsKey(AzuEPIGUID))
                     {
-                        if (child.name is "sortInventoryButton" or "restockAreaButton" or "quickStackAreaButton" or "favoritingTogglingButton")
+                        if (child.name is SortInventoryButton or RestockAreaButton or QuickStackAreaButton or FavoritingToggleButton)
                         {
                             RectTransform? rect = child.gameObject.GetComponent<RectTransform>();
                             if (rect != null)
                             {
-                                if (child.name == "favoritingTogglingButton")
+                                if (child.name == FavoritingToggleButton)
                                     rect.anchoredPosition += new Vector2(0, 20);
-                                else if (!Chainloader.PluginInfos.ContainsKey("randyknapp.mods.equipmentandquickslots") && Chainloader.PluginInfos.ContainsKey("Azumatt.AzuExtendedPlayerInventory"))
+                                else if (!Chainloader.PluginInfos.ContainsKey(RandyQuickslots) && Chainloader.PluginInfos.ContainsKey(AzuEPIGUID))
                                     rect.anchoredPosition += new Vector2(0, -15);
                                 else
                                 {
@@ -112,277 +124,9 @@ public class CurrencyPocket
     {
         static void Postfix(StoreGui __instance, ref int __result)
         {
-            __result += MiscFunctions.GetPlayerCoinsFromCustomData();
+            __result += GetPlayerCoinsFromCustomData();
         }
     }
-
-    /*[HarmonyPatch(typeof(Player), nameof(Player.UpdateKnownRecipesList))]
-    static class UpdateKnownRecipesListPatch
-    {
-        internal static bool skip;
-
-        static void Prefix()
-        {
-            skip = true;
-        }
-
-        static void Postfix()
-        {
-            skip = false;
-        }
-    }*/
-
-    /*[HarmonyPatch(typeof(Player), nameof(Player.ConsumeResources))]
-    static class ConsumeResourcesPatch
-    {
-        static bool Prefix(Player __instance, Piece.Requirement[] requirements, int qualityLevel, int itemQuality = -1)
-        {
-            MiscFunctions.ProcessRequirements(requirements, qualityLevel, __instance, itemQuality);
-            return false;
-        }
-    }
-
-    [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirementList))]
-    static class InventoryGuiCollectRequirements
-    {
-        public static Dictionary<Piece.Requirement, int> actualAmounts = new();
-
-        private static void Prefix()
-        {
-            actualAmounts.Clear();
-        }
-    }
-
-    [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirement))]
-    static class InventoryGuiSetupRequirementPatch
-    {
-        static void Postfix(InventoryGui __instance, Transform elementRoot, Piece.Requirement req, Player player, bool craft, int quality)
-        {
-            if (req == null || req?.m_resItem == null || req.m_resItem.m_itemData?.m_shared == null)
-            {
-                return;
-            }
-
-            req.m_resItem.m_itemData.m_dropPrefab = req.m_resItem.gameObject;
-            if (req.m_resItem.m_itemData.m_dropPrefab == null)
-            {
-                return;
-            }
-
-            int invAmount = player.GetInventory().CountItems(req.m_resItem.m_itemData.m_shared.m_name);
-            TextMeshProUGUI text = elementRoot.transform.Find("res_amount").GetComponent<TextMeshProUGUI>();
-            if (text == null) return;
-            if (!int.TryParse(text.text, out int amount))
-            {
-                amount = req.GetAmount(quality);
-            }
-
-            if (amount <= 0)
-            {
-                return;
-            }
-
-            if (invAmount < amount)
-            {
-                GameObject itemPrefab = ObjectDB.instance.GetItemPrefab(req.m_resItem.GetPrefabName(req.m_resItem.gameObject.name));
-                if (itemPrefab == null)
-                {
-                    return;
-                }
-
-                req.m_resItem.m_itemData.m_dropPrefab = itemPrefab;
-
-                try
-                {
-                    if (req.m_resItem.m_itemData.m_dropPrefab == null)
-                        return;
-                    string sharedName = req.m_resItem.m_itemData.m_shared.m_name;
-                    if (sharedName == CurrencyPocket.CurrencyPocket.coinToken)
-                        invAmount += MiscFunctions.GetPlayerCoinsFromCustomData();
-                }
-                catch (System.Exception e)
-                {
-                    // ignored
-                }
-
-
-                if (invAmount >= amount)
-                {
-                    text.color = ((Mathf.Sin(Time.time * 10f) > 0f)
-                        ? Color.yellow
-                        : Color.white);
-                    InventoryGuiCollectRequirements.actualAmounts[req] = amount;
-                }
-            }
-
-            text.text = string.Format("{0}/{1}", invAmount, amount);
-        }
-    }
-
-    [HarmonyPatch(typeof(Player), nameof(Player.HaveRequirementItems), new[] { typeof(Recipe), typeof(bool), typeof(int) })]
-    static class PlayerHaveRequirementsPatch
-    {
-        static void Postfix(Player __instance, ref bool __result, Recipe piece, bool discover, int qualityLevel, HashSet<string> ___m_knownMaterial)
-        {
-            if (__result || discover)
-                return;
-            bool cando = false;
-            foreach (Piece.Requirement requirement in piece.m_resources)
-            {
-                if (!requirement.m_resItem) continue;
-                bool proceed = MiscFunctions.CheckItemDropIntegrity(requirement.m_resItem);
-                if (!proceed)
-                    continue;
-                if (!InventoryGuiCollectRequirements.actualAmounts.TryGetValue(requirement, out int amount))
-                {
-                    amount = requirement.GetAmount(qualityLevel);
-                }
-
-                int invAmount = __instance.GetInventory().CountItems(requirement.m_resItem.m_itemData.m_shared.m_name);
-                if (invAmount >= amount) continue;
-
-                GameObject itemPrefab = MiscFunctions.GetItemPrefabFromGameObject(requirement.m_resItem, requirement.m_resItem.gameObject)!;
-                requirement.m_resItem.m_itemData.m_dropPrefab = requirement.m_resItem.gameObject;
-                if (itemPrefab == null)
-                    continue;
-                if (requirement.m_resItem.m_itemData.m_dropPrefab == null)
-                {
-                    continue;
-                }
-
-                string itemPrefabName = Utils.GetPrefabName(requirement.m_resItem.name);
-                string sharedName = requirement.m_resItem.m_itemData.m_shared.m_name;
-
-                if (requirement.m_resItem?.m_itemData?.m_dropPrefab == null)
-                    continue;
-                if (sharedName == CurrencyPocket.CurrencyPocket.coinToken)
-                    invAmount += MiscFunctions.GetPlayerCoinsFromCustomData();
-                ;
-
-
-                if (piece.m_requireOnlyOneIngredient)
-                {
-                    if (invAmount < amount) continue;
-                    //cando = true;
-                    if (__instance.m_knownMaterial.Contains(requirement.m_resItem.m_itemData.m_shared.m_name))
-                    {
-                        cando = true;
-                    }
-                }
-                else if (invAmount < amount)
-                    return;
-                else
-                {
-                    cando = true;
-                }
-            }
-
-            if (cando)
-                __result = true;
-        }
-    }
-
-    [HarmonyPatch(typeof(Player), nameof(Player.HaveRequirements), typeof(Piece), typeof(Player.RequirementMode))]
-    static class HaveRequirementsPatch2
-    {
-        [HarmonyWrapSafe]
-        static void Postfix(Player __instance, ref bool __result, Piece piece, Player.RequirementMode mode, HashSet<string> ___m_knownMaterial, Dictionary<string, int> ___m_knownStations)
-        {
-            try
-            {
-                if (__result || __instance?.transform?.position == null)
-                    return;
-                if (piece == null)
-                    return;
-
-                if (piece.m_craftingStation)
-                {
-                    if (mode is Player.RequirementMode.IsKnown or Player.RequirementMode.CanAlmostBuild)
-                    {
-                        if (!___m_knownStations.ContainsKey(piece.m_craftingStation.m_name))
-                        {
-                            return;
-                        }
-                    }
-                    else if (!CraftingStation.HaveBuildStationInRange(piece.m_craftingStation.m_name, __instance.transform.position))
-                    {
-                        return;
-                    }
-                }
-
-                if (piece.m_dlc.Length > 0 && !DLCMan.instance.IsDLCInstalled(piece.m_dlc))
-                {
-                    return;
-                }
-
-                foreach (Piece.Requirement requirement in piece.m_resources)
-                {
-                    if (requirement.m_resItem == null)
-                        continue;
-                    if (requirement.m_resItem && requirement.m_amount > 0)
-                    {
-                        if (!MiscFunctions.CheckItemDropIntegrity(requirement.m_resItem))
-                            continue;
-                        requirement.m_resItem.m_itemData.m_dropPrefab = requirement.m_resItem.gameObject;
-                        if (requirement.m_resItem.m_itemData.m_dropPrefab == null)
-                            continue;
-                        switch (mode)
-                        {
-                            case Player.RequirementMode.IsKnown
-                                when !___m_knownMaterial.Contains(requirement.m_resItem.m_itemData.m_shared.m_name):
-                                return;
-                            case Player.RequirementMode.CanAlmostBuild when __instance.GetInventory().HaveItem(requirement.m_resItem.m_itemData.m_shared.m_name):
-                                continue;
-                            case Player.RequirementMode.CanAlmostBuild:
-                            {
-                                bool hasItem = false;
-                                string sharedName = requirement.m_resItem.m_itemData.m_shared.m_name;
-
-                                requirement.m_resItem.m_itemData.m_dropPrefab = requirement.m_resItem.gameObject;
-                                if (requirement.m_resItem.m_itemData.m_dropPrefab == null)
-                                    continue;
-
-                                if (MiscFunctions.GetPlayerCoinsFromCustomData() > 0)
-                                {
-                                    hasItem = true;
-                                    break;
-                                }
-
-
-                                if (!hasItem)
-                                    return;
-                                break;
-                            }
-                            case Player.RequirementMode.CanBuild when __instance.GetInventory().CountItems(requirement.m_resItem.m_itemData.m_shared.m_name) < requirement.m_amount:
-                            {
-                                int hasItems = __instance.GetInventory().CountItems(requirement.m_resItem.m_itemData.m_shared.m_name);
-                                requirement.m_resItem.m_itemData.m_dropPrefab = requirement.m_resItem.gameObject;
-                                if (requirement.m_resItem.m_itemData.m_dropPrefab == null)
-                                    continue;
-                                string itemPrefabName = requirement.m_resItem.name;
-                                string sharedName = requirement.m_resItem.m_itemData.m_shared.m_name;
-                                if (sharedName == CurrencyPocket.CurrencyPocket.coinToken)
-                                    hasItems += MiscFunctions.GetPlayerCoinsFromCustomData();
-                                if (hasItems >= requirement.m_amount)
-                                {
-                                    break;
-                                }
-
-                                if (hasItems < requirement.m_amount)
-                                    return;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                __result = true;
-            }
-            catch
-            {
-            }
-        }
-    }*/
 
 
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.Pickup))]
@@ -404,7 +148,7 @@ public class CurrencyPocket
 
             if (itemName == CoinToken)
             {
-                MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + originalAmount);
+                UpdatePlayerCustomData(GetPlayerCoinsFromCustomData() + originalAmount);
                 UpdatePocketUI();
                 ZNetScene.instance.Destroy(go);
                 player.m_pickupEffects.Create(player.transform.position, Quaternion.identity);
@@ -439,19 +183,19 @@ public class CurrencyPocket
         }
     }
 
-    [HarmonyPatch(typeof(Inventory), nameof(Inventory.RemoveItem), new System.Type[] { typeof(string), typeof(int), typeof(int), typeof(bool) })]
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.RemoveItem), new Type[] { typeof(string), typeof(int), typeof(int), typeof(bool) })]
     public static class Inventory_RemoveItem_Patch
     {
         public static void Postfix(Inventory __instance, string name, int amount, int itemQuality, bool worldLevelBased)
         {
-            if(Player.m_localPlayer == null) return;
+            if (Player.m_localPlayer == null) return;
             if (__instance == Player.m_localPlayer.GetInventory())
             {
-                int coinCount = MiscFunctions.GetPlayerCoinsFromCustomData();
-                if (name == CoinToken && MiscFunctions.GetPlayerCoinsFromCustomData() >= amount)
+                int coinCount = GetPlayerCoinsFromCustomData();
+                if (name == CoinToken && GetPlayerCoinsFromCustomData() >= amount)
                 {
                     coinCount -= amount;
-                    MiscFunctions.UpdatePlayerCustomData(coinCount);
+                    UpdatePlayerCustomData(coinCount);
                     UpdatePocketUI();
                 }
             }
@@ -467,9 +211,9 @@ public class CurrencyPocket
             if (InventoryGui.instance != null && InventoryGui.instance.m_currentContainer != null && fromInventory == InventoryGui.instance.m_currentContainer.GetInventory())
             {
                 if (item.m_shared.m_name != CoinToken || __instance != Player.m_localPlayer.GetInventory()) return true;
-                MiscFunctions.GetPlayerCoinsFromCustomData();
-                MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + item.m_stack);
-                CurrencyPocket.UpdatePocketUI();
+                GetPlayerCoinsFromCustomData();
+                UpdatePlayerCustomData(GetPlayerCoinsFromCustomData() + item.m_stack);
+                UpdatePocketUI();
                 // if (CouldAdd(__instance, item))
                 fromInventory.RemoveItem(item);
                 __instance.Changed();
@@ -529,26 +273,37 @@ public class CurrencyPocket
     {
         if (InventoryGuiUpdatePatch.pocketUI == null) return;
         // Update the UI with the current coin count
-        Transform? coinText = Utils.FindChild(InventoryGuiUpdatePatch.pocketUI.transform, "ac_text");
+        Transform? coinText = Utils.FindChild(InventoryGuiUpdatePatch.pocketUI.transform, AcText);
         if (coinText == null) return;
         TextMeshProUGUI coinTextTMP = coinText.GetComponent<TextMeshProUGUI>();
         if (coinTextTMP == null) return;
-        coinTextTMP.text = $"{MiscFunctions.GetPlayerCoinsFromCustomData()}";
+        coinTextTMP.text = $"{GetPlayerCoinsFromCustomData()}";
     }
 
     private static void CreatePocketUI(InventoryGui instance)
     {
         Transform inv = instance.m_player.transform;
-        InventoryGuiUpdatePatch.pocketUI = Object.Instantiate(inv.Find("Armor").gameObject, inv);
-        InventoryGuiUpdatePatch.pocketUI.name = "CoinPocketUI";
+        InventoryGuiUpdatePatch.pocketUI = Object.Instantiate(inv.Find(ArmorName).gameObject, inv);
+        InventoryGuiUpdatePatch.pocketUI.name = CoinPocketUIName;
         CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Creating pocket UI at {InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition}");
-        InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition += new Vector2(0, -234);
+        if (IsOverlappingUIModInstalled())
+        {
+            InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition += new Vector2(0, -234);
+        }
+        else
+        {
+            // Calculate the halfway point between the inv.Find(Armor) and inv.Find(Weight) positions, that's where we want to place the pocket UI
+            RectTransform armorRect = inv.Find(ArmorName).GetComponent<RectTransform>();
+            RectTransform weightRect = inv.Find(WeightName).GetComponent<RectTransform>();
+            InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition = new Vector2(armorRect.anchoredPosition.x, (armorRect.anchoredPosition.y + weightRect.anchoredPosition.y) / 2);
+        }
+
         CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Creating pocket UI at {InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition}");
-        GameObject? coins = ObjectDB.instance.GetItemPrefab("Coins");
+        GameObject? coins = ObjectDB.instance.GetItemPrefab(CoinsPrefabName);
         InventoryGuiUpdatePatch.coinSprite = coins.GetComponent<ItemDrop>().m_itemData.GetIcon();
-        InventoryGuiUpdatePatch.pocketUI.transform.Find("armor_icon").GetComponent<Image>().sprite = InventoryGuiUpdatePatch.coinSprite;
-        InventoryGuiUpdatePatch.pocketUI.transform.SetSiblingIndex(inv.Find("Armor").GetSiblingIndex());
-        InventoryGuiUpdatePatch.pocketUI.transform.Find("ac_text").GetComponent<TextMeshProUGUI>().text = $"{MiscFunctions.GetPlayerCoinsFromCustomData()}";
+        InventoryGuiUpdatePatch.pocketUI.transform.Find(ArmorIconName).GetComponent<Image>().sprite = InventoryGuiUpdatePatch.coinSprite;
+        InventoryGuiUpdatePatch.pocketUI.transform.SetSiblingIndex(inv.Find(ArmorName).GetSiblingIndex());
+        InventoryGuiUpdatePatch.pocketUI.transform.Find(AcText).GetComponent<TextMeshProUGUI>().text = $"{GetPlayerCoinsFromCustomData()}";
         InventoryGuiUpdatePatch.pocketUI.AddComponent<PocketDrop>();
     }
 
@@ -561,14 +316,14 @@ public class CurrencyPocket
 
         // Clone the take all button and add it to the inventory (InventoryGui.instance.m_takeAllButton)
         InventoryGuiUpdatePatch.ExtractButton = Object.Instantiate(__instance.m_takeAllButton, InventoryGuiUpdatePatch.pocketUI.transform);
-        InventoryGuiUpdatePatch.ExtractButton.name = "ExtractCoinsButton";
+        InventoryGuiUpdatePatch.ExtractButton.name = ExtractCoinsButtonName;
         InventoryGuiUpdatePatch.ExtractButton.GetComponentInChildren<TextMeshProUGUI>().text = "\U0001F4E6";
 
         // Add button to extract coins
         InventoryGuiUpdatePatch.ExtractButton.transform.SetParent(InventoryGuiUpdatePatch.pocketUI.transform, false);
 
         InventoryGuiUpdatePatch.ExtractButton.onClick = new Button.ButtonClickedEvent();
-        InventoryGuiUpdatePatch.ExtractButton.onClick.AddListener(MiscFunctions.ExtractCoins);
+        InventoryGuiUpdatePatch.ExtractButton.onClick.AddListener(ExtractCoins);
 
         // Position the button
         RectTransform buttonRectTransform = InventoryGuiUpdatePatch.ExtractButton.GetComponent<RectTransform>();
@@ -584,11 +339,11 @@ public class CurrencyPocket
 
     private static void CreateIcon()
     {
-        GameObject? coins = ObjectDB.instance.GetItemPrefab("Coins");
+        GameObject? coins = ObjectDB.instance.GetItemPrefab(CoinsPrefabName);
         Sprite? coinIconSprite = coins.GetComponent<ItemDrop>().m_itemData.GetIcon();
 
         // Add icon to the UI
-        GameObject iconObject = new GameObject("CoinIcon");
+        GameObject iconObject = new GameObject(CoinIconName);
         iconObject.transform.SetParent(InventoryGuiUpdatePatch.pocketUI.transform, false);
 
         Image coinIcon = iconObject.AddComponent<Image>();
@@ -605,10 +360,10 @@ static class InventoryGuiOnSplitOkPatch
 
     internal static void Prefix(InventoryGui __instance)
     {
-        if (__instance.m_splitItem?.m_shared.m_name != CurrencyPocket.CoinToken || !CurrencyPocket.CoinExtractionInProgress) return;
+        if (__instance.m_splitItem?.m_shared.m_name != CoinToken || !CurrencyPocket.CoinExtractionInProgress) return;
         // Needed because the split inventory sometimes is auto set to the player's inventory. Workaround for now.
         __instance.m_splitInventory = throwAwayInventory;
-        MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
+        UpdatePlayerCustomData(GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
         CurrencyPocket.UpdatePocketUI();
         CurrencyPocket.CoinExtractionInProgress = false;
     }
@@ -624,6 +379,6 @@ static class PreventSetupDrag
             return true;
         }
 
-        return __instance.m_dragInventory is not { m_name: CurrencyPocket.CoinCountCustomData };
+        return __instance.m_dragInventory is not { m_name: CoinCountCustomData };
     }
 }
