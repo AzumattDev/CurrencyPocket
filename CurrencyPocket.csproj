@@ -125,6 +125,7 @@
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
     <ItemGroup>
+        <Content Include=".github\workflows\publish-mod.yml" />
         <Content Include=".gitignore"/>
         <Content Include="environment.props"/>
         <Content Include="Libs\ServerSync.dll">

@@ -93,25 +93,6 @@ public class CurrencyPocket
                             }
                         }
                     }
-
-                    if (Chainloader.PluginInfos.ContainsKey(RandyQuickslots) || Chainloader.PluginInfos.ContainsKey(AzuEPIGUID))
-                    {
-                        if (child.name is SortInventoryButton or RestockAreaButton or QuickStackAreaButton or FavoritingToggleButton)
-                        {
-                            RectTransform? rect = child.gameObject.GetComponent<RectTransform>();
-                            if (rect != null)
-                            {
-                                if (child.name == FavoritingToggleButton)
-                                    rect.anchoredPosition += new Vector2(0, 20);
-                                else if (!Chainloader.PluginInfos.ContainsKey(RandyQuickslots) && Chainloader.PluginInfos.ContainsKey(AzuEPIGUID))
-                                    rect.anchoredPosition += new Vector2(0, -15);
-                                else
-                                {
-                                    rect.anchoredPosition += new Vector2(0, -30);
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
@@ -285,20 +266,22 @@ public class CurrencyPocket
         Transform inv = instance.m_player.transform;
         InventoryGuiUpdatePatch.pocketUI = Object.Instantiate(inv.Find(ArmorName).gameObject, inv);
         InventoryGuiUpdatePatch.pocketUI.name = CoinPocketUIName;
-        CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Creating pocket UI at {InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition}");
+        RectTransform? pocketRect = InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>();
+        CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Creating pocket UI at {pocketRect.anchoredPosition}");
         if (IsOverlappingUIModInstalled())
         {
-            InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition += new Vector2(0, -234);
+            pocketRect.anchoredPosition += new Vector2(0, -234);
         }
         else
         {
             // Calculate the halfway point between the inv.Find(Armor) and inv.Find(Weight) positions, that's where we want to place the pocket UI
             RectTransform armorRect = inv.Find(ArmorName).GetComponent<RectTransform>();
             RectTransform weightRect = inv.Find(WeightName).GetComponent<RectTransform>();
-            InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition = new Vector2(armorRect.anchoredPosition.x, (armorRect.anchoredPosition.y + weightRect.anchoredPosition.y) / 2);
+            InventoryGuiUpdatePatch.pocketUI.transform.SetSiblingIndex(inv.Find(ArmorName).GetSiblingIndex());
+            pocketRect.anchoredPosition = new Vector2(armorRect.anchoredPosition.x, (armorRect.anchoredPosition.y + weightRect.anchoredPosition.y) / 2);
         }
 
-        CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Creating pocket UI at {InventoryGuiUpdatePatch.pocketUI.GetComponent<RectTransform>().anchoredPosition}");
+        CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Creating pocket UI at {pocketRect.anchoredPosition}");
         GameObject? coins = ObjectDB.instance.GetItemPrefab(CoinsPrefabName);
         InventoryGuiUpdatePatch.coinSprite = coins.GetComponent<ItemDrop>().m_itemData.GetIcon();
         InventoryGuiUpdatePatch.pocketUI.transform.Find(ArmorIconName).GetComponent<Image>().sprite = InventoryGuiUpdatePatch.coinSprite;
@@ -382,3 +365,40 @@ static class PreventSetupDrag
         return __instance.m_dragInventory is not { m_name: CoinCountCustomData };
     }
 }
+
+/*[HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.DropItem))]
+static class InventoryGridDropItemPatch
+{
+    static void Prefix(InventoryGrid __instance, Inventory fromInventory, ItemDrop.ItemData item, int amount, Vector2i pos)
+    {
+        //__instance.m_dragInventory is not { m_name: CoinCountCustomData }
+        ItemDrop.ItemData itemAt = __instance.m_inventory.GetItemAt(pos.x, pos.y);
+        if (itemAt == item)
+        {
+            CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Item at {pos.x}, {pos.y} is the same as the item being dropped.");
+            return;
+        }
+
+        if (itemAt == null || itemAt.m_shared.m_name == item.m_shared.m_name && (item.m_shared.m_maxQuality <= 1 || itemAt.m_quality == item.m_quality) && itemAt.m_shared.m_maxStackSize != 1 || item.m_stack != amount)
+        {
+            // Make sure to remove from drag inventory what the ItemAt stack was
+            if (itemAt != null && itemAt.m_shared.m_name == CoinToken)
+            {
+                // Check if the itemAt stack can accept coins, if so, add up until the max stack if available, if the itemAt stack is full, do nothing
+                int maxStack = itemAt.m_shared.m_maxStackSize;
+                CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"{fromInventory.m_name}");
+                if (itemAt.m_stack < maxStack && fromInventory.m_name == CoinCountCustomData)
+                {
+                    int coinsToAdd = Math.Min(item.m_stack, maxStack - itemAt.m_stack);
+                    fromInventory.RemoveItem(item, coinsToAdd);
+                    fromInventory.Changed();
+                    __instance.m_inventory.Changed();
+                    CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Added {coinsToAdd} coins to the item at {pos.x}, {pos.y}");
+                }
+            }
+
+            CurrencyPocketPlugin.CurrencyPocketLogger.LogDebug($"Item at {pos.x}, {pos.y} is not the same as the item being dropped., first block reached");
+            return;
+        }
+    }
+}*/
