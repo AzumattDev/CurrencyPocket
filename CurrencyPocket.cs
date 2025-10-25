@@ -183,7 +183,7 @@ public class CurrencyPocket
         }
     }
 
-    [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData))]
+    /*[HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData))]
     static class TransferBetweenInventories
     {
         static bool Prefix(Inventory __instance, Inventory fromInventory, ItemDrop.ItemData item)
@@ -246,6 +246,71 @@ public class CurrencyPocket
 
             inventory.Changed();
             return flag;
+        }
+    }*/
+
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), new Type[] { typeof(Inventory), typeof(ItemDrop.ItemData), typeof(int), typeof(int), typeof(int) })]
+    static class InventoryMoveItemToThisPatch
+    {
+        static bool Prefix(Inventory __instance, Inventory fromInventory, ItemDrop.ItemData item, int amount, int x, int y)
+        {
+            if (Player.m_localPlayer == null)
+                return true;
+
+            // Process only coin transfers into the player's main inventory.
+            if (item.m_shared.m_name == CoinToken && __instance == Player.m_localPlayer.GetInventory())
+            {
+                // Determine whether the source is custom coin container.
+                bool fromCustomContainer = fromInventory.m_name == CoinCountCustomData;
+
+                // Look for an existing coin stack in the target slot.
+                ItemDrop.ItemData targetItem = __instance.GetItemAt(x, y);
+                int coinsToTransfer = amount;
+                if (targetItem != null && targetItem.m_shared.m_name == CoinToken)
+                {
+                    // Calculate available space in the target stack.
+                    int availableSpace = targetItem.m_shared.m_maxStackSize - targetItem.m_stack;
+                    coinsToTransfer = Mathf.Min(availableSpace, amount);
+                    if (coinsToTransfer > 0)
+                    {
+                        targetItem.m_stack += coinsToTransfer;
+                        item.m_stack -= coinsToTransfer;
+                        // Only update the custom coin count if coins are not coming from our pocket container.
+                        if (!fromCustomContainer)
+                        {
+                            int currentCoins = MiscFunctions.GetPlayerCoinsFromCustomData();
+                            MiscFunctions.UpdatePlayerCustomData(currentCoins - coinsToTransfer);
+                            UpdatePocketUI();
+                        }
+                    }
+
+                    // If the dragged coin item is now empty, remove it.
+                    if (item.m_stack <= 0)
+                    {
+                        fromInventory.RemoveItem(item);
+                    }
+
+                    __instance.Changed();
+                    fromInventory.Changed();
+                    return false; // Prevent the original method from running.
+                }
+                else
+                {
+                    // If there is no coin stack at the target slot, let the base game logic run.
+                    bool result = __instance.AddItem(item, amount, x, y);
+                    int coinsTransferred = amount - item.m_stack; // coins that were merged
+                    if (coinsTransferred > 0 && !fromCustomContainer)
+                    {
+                        int currentCoins = MiscFunctions.GetPlayerCoinsFromCustomData();
+                        MiscFunctions.UpdatePlayerCustomData(currentCoins - coinsTransferred);
+                        UpdatePocketUI();
+                    }
+
+                    return false;
+                }
+            }
+
+            return true; // For non-coin items, execute the original method.
         }
     }
 
