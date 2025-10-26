@@ -104,7 +104,10 @@
             <HintPath>$(CorlibPath)\UnityEngine.TextRenderingModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.ImageConversionModule">
-            <HintPath>$(CorlibPath)\UnityEngine.ImageConversionModule.dll</HintPath>
+            <HintPath>C:\Users\crypt\OneDrive\Desktop\Libs\UnityEngine.ImageConversionModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.ParticleSystemModule">
+            <HintPath>$(CorlibPath)\UnityEngine.ParticleSystemModule.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.UIModule">
             <HintPath>$(CorlibPath)\UnityEngine.UIModule.dll</HintPath>
@@ -119,6 +122,7 @@
     <ItemGroup>
         <Compile Include="Compatibility\RapidLoadoutsCompat.cs" />
         <Compile Include="CurrencyPocket.cs" />
+        <Compile Include="GlobalUsings.cs" />
         <Compile Include="MiscFunctions.cs" />
         <Compile Include="Plugin.cs"/>
         <Compile Include="PocketDrop.cs" />

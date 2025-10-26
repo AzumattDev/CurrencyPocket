@@ -1,24 +1,14 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using BepInEx.Bootstrap;
-using HarmonyLib;
+﻿using System.Collections;
 using TMPro;
-using UnityEngine;
 using UnityEngine.UI;
-using Object = UnityEngine.Object;
 using static CurrencyPocket.MiscFunctions;
-using static CurrencyPocket.Constants;
+using Object = UnityEngine.Object;
 
 namespace CurrencyPocket;
 
 public class CurrencyPocket
 {
-    internal static bool CoinExtractionInProgress = false;
+    internal static bool CoinExtractionInProgress;
 
     [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
     public static class InventoryGuiUpdatePatch
@@ -77,7 +67,7 @@ public class CurrencyPocket
                     if (child.name is ArmorName or WeightName or JewelcraftingSynergyName or CoinPocketUIName or TrashButtonName)
                     {
                         RectTransform? rect = child.gameObject.GetComponent<RectTransform>();
-                        if (rect != null)
+                        if (rect)
                         {
                             switch (child.name)
                             {
@@ -145,7 +135,7 @@ public class CurrencyPocket
     [HarmonyPatch(typeof(Player), nameof(Player.AutoPickup))]
     private static class CheckAutoPickupActive
     {
-        public static bool PickingUp = false;
+        public static bool PickingUp;
         private static void Prefix() => PickingUp = true;
         private static void Finalizer() => PickingUp = false;
     }
@@ -164,7 +154,7 @@ public class CurrencyPocket
         }
     }
 
-    [HarmonyPatch(typeof(Inventory), nameof(Inventory.RemoveItem), new Type[] { typeof(string), typeof(int), typeof(int), typeof(bool) })]
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.RemoveItem), typeof(string), typeof(int), typeof(int), typeof(bool))]
     public static class Inventory_RemoveItem_Patch
     {
         public static void Postfix(Inventory __instance, string name, int amount, int itemQuality, bool worldLevelBased)
@@ -183,134 +173,61 @@ public class CurrencyPocket
         }
     }
 
-    /*[HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData))]
-    static class TransferBetweenInventories
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData), typeof(int), typeof(int), typeof(int))]
+    static class InventoryMoveItemToThisPatch
     {
-        static bool Prefix(Inventory __instance, Inventory fromInventory, ItemDrop.ItemData item)
+        static bool Prefix(Inventory __instance, Inventory fromInventory, ItemDrop.ItemData item, int amount, int x, int y, ref bool __result)
         {
-            if (Player.m_localPlayer == null) return true;
-            if (InventoryGui.instance != null && InventoryGui.instance.m_currentContainer != null && fromInventory == InventoryGui.instance.m_currentContainer.GetInventory())
+            Player? player = Player.m_localPlayer;
+            if (!player) return true;
+
+            // Only intercept coins moved into the player's main inventory.
+            if (item?.m_shared?.m_name != CoinToken || __instance != player.GetInventory())
+                return true;
+
+            // If there is a coin stack at target, bounded merge.
+            ItemDrop.ItemData targetItem = __instance.GetItemAt(x, y);
+            if (targetItem is { m_shared.m_name: CoinToken })
             {
-                if (item.m_shared.m_name != CoinToken || __instance != Player.m_localPlayer.GetInventory()) return true;
-                GetPlayerCoinsFromCustomData();
-                UpdatePlayerCustomData(GetPlayerCoinsFromCustomData() + item.m_stack);
-                UpdatePocketUI();
-                // if (CouldAdd(__instance, item))
-                fromInventory.RemoveItem(item);
-                __instance.Changed();
-                fromInventory.Changed();
+                int maxStack = targetItem.m_shared.m_maxStackSize;
+                int available = Math.Max(0, maxStack - targetItem.m_stack);
+                int coinsToTransfer = Math.Min(Math.Min(available, amount), item.m_stack);
+
+                if (coinsToTransfer > 0)
+                {
+                    targetItem.m_stack += coinsToTransfer;
+                    item.m_stack -= coinsToTransfer;
+
+                    if (item.m_stack <= 0 && fromInventory != null)
+                        fromInventory.RemoveItem(item);
+
+                    __instance.Changed();
+                    fromInventory?.Changed();
+
+                    __result = true;
+                    return false;
+                }
+
+                __result = false;
                 return false;
             }
 
-            return true;
-        }
+            // No coin stack at target: emulate vanilla bounded add into exact slot.
+            int preStack = item.m_stack;
+            bool placed = __instance.AddItem(item, amount, x, y);
 
-        public static bool CouldAdd(Inventory inventory, ItemDrop.ItemData item)
-        {
-            bool flag = true;
-            if (item.m_shared.m_maxStackSize > 1)
+            int moved = Math.Max(0, preStack - item.m_stack);
+            if (moved > 0)
             {
-                for (int index = 0; index < item.m_stack; ++index)
-                {
-                    ItemDrop.ItemData freeStackItem = inventory.FindFreeStackItem(item.m_shared.m_name, item.m_quality, (float)item.m_worldLevel);
-                    if (freeStackItem != null)
-                    {
-                        ++freeStackItem.m_stack;
-                    }
-                    else
-                    {
-                        int num = item.m_stack - index;
-                        item.m_stack = num;
-                        Vector2i emptySlot = inventory.FindEmptySlot(inventory.TopFirst(item));
-                        if (emptySlot.x >= 0)
-                        {
-                            // Simply do not add the item
-                            break;
-                        }
+                if (item.m_stack <= 0 && fromInventory != null)
+                    fromInventory.RemoveItem(item);
 
-                        flag = false;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                Vector2i emptySlot = inventory.FindEmptySlot(inventory.TopFirst(item));
-                if (emptySlot.x >= 0)
-                {
-                    // Simply do not add the item
-                }
-                else
-                    flag = false;
+                fromInventory?.Changed();
+                __instance.Changed();
             }
 
-            inventory.Changed();
-            return flag;
-        }
-    }*/
-
-    [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), new Type[] { typeof(Inventory), typeof(ItemDrop.ItemData), typeof(int), typeof(int), typeof(int) })]
-    static class InventoryMoveItemToThisPatch
-    {
-        static bool Prefix(Inventory __instance, Inventory fromInventory, ItemDrop.ItemData item, int amount, int x, int y)
-        {
-            if (Player.m_localPlayer == null)
-                return true;
-
-            // Process only coin transfers into the player's main inventory.
-            if (item.m_shared.m_name == CoinToken && __instance == Player.m_localPlayer.GetInventory())
-            {
-                // Determine whether the source is custom coin container.
-                bool fromCustomContainer = fromInventory.m_name == CoinCountCustomData;
-
-                // Look for an existing coin stack in the target slot.
-                ItemDrop.ItemData targetItem = __instance.GetItemAt(x, y);
-                int coinsToTransfer = amount;
-                if (targetItem != null && targetItem.m_shared.m_name == CoinToken)
-                {
-                    // Calculate available space in the target stack.
-                    int availableSpace = targetItem.m_shared.m_maxStackSize - targetItem.m_stack;
-                    coinsToTransfer = Mathf.Min(availableSpace, amount);
-                    if (coinsToTransfer > 0)
-                    {
-                        targetItem.m_stack += coinsToTransfer;
-                        item.m_stack -= coinsToTransfer;
-                        // Only update the custom coin count if coins are not coming from our pocket container.
-                        if (!fromCustomContainer)
-                        {
-                            int currentCoins = MiscFunctions.GetPlayerCoinsFromCustomData();
-                            MiscFunctions.UpdatePlayerCustomData(currentCoins - coinsToTransfer);
-                            UpdatePocketUI();
-                        }
-                    }
-
-                    // If the dragged coin item is now empty, remove it.
-                    if (item.m_stack <= 0)
-                    {
-                        fromInventory.RemoveItem(item);
-                    }
-
-                    __instance.Changed();
-                    fromInventory.Changed();
-                    return false; // Prevent the original method from running.
-                }
-                else
-                {
-                    // If there is no coin stack at the target slot, let the base game logic run.
-                    bool result = __instance.AddItem(item, amount, x, y);
-                    int coinsTransferred = amount - item.m_stack; // coins that were merged
-                    if (coinsTransferred > 0 && !fromCustomContainer)
-                    {
-                        int currentCoins = MiscFunctions.GetPlayerCoinsFromCustomData();
-                        MiscFunctions.UpdatePlayerCustomData(currentCoins - coinsTransferred);
-                        UpdatePocketUI();
-                    }
-
-                    return false;
-                }
-            }
-
-            return true; // For non-coin items, execute the original method.
+            __result = placed;
+            return false;
         }
     }
 

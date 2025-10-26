@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using BepInEx;
-using UnityEngine;
-using static CurrencyPocket.Constants;
+﻿using System.Collections.Generic;
 
 namespace CurrencyPocket;
 
@@ -55,6 +49,7 @@ public class MiscFunctions
 
     internal static void UpdatePlayerCustomData(int coinCount, Player? player = null)
     {
+        coinCount = Math.Max(0, coinCount);
         if (player == null)
         {
             player = Player.m_localPlayer;
