@@ -9,7 +9,7 @@ namespace CurrencyPocket;
 public class CurrencyPocketPlugin : BaseUnityPlugin
 {
     internal const string ModName = "CurrencyPocket";
-    internal const string ModVersion = "1.0.10";
+    internal const string ModVersion = "1.0.11";
     internal const string Author = "Azumatt";
     private const string ModGUID = $"{Author}.{ModName}";
     internal readonly Harmony _harmony = new(ModGUID);
@@ -28,6 +28,7 @@ public class CurrencyPocketPlugin : BaseUnityPlugin
     public void Start()
     {
         RapidLoadoutsCompat.Init();
+        ExtraSlots.FuckOff();
     }
 
 

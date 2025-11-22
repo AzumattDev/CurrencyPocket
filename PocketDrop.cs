@@ -49,35 +49,33 @@ public class PocketDrop : MonoBehaviour, IPointerEnterHandler, IPointerExitHandl
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (InventoryGui.m_instance && InventoryGui.m_instance.m_dragGo && InventoryGui.m_instance.m_dragItem != null && (InventoryGui.m_instance.m_dragItem.m_shared.m_name == CoinToken || InventoryGui.m_instance.m_dragItem.m_shared.m_value > 0) && InventoryGui.m_instance.m_dragInventory != null)
+        if (!InventoryGui.m_instance || !InventoryGui.m_instance.m_dragGo || InventoryGui.m_instance.m_dragItem == null || (InventoryGui.m_instance.m_dragItem.m_shared.m_name != CoinToken && InventoryGui.m_instance.m_dragItem.m_shared.m_value <= 0) || InventoryGui.m_instance.m_dragInventory == null) return;
+        bool itemIsValuable = InventoryGui.m_instance.m_dragItem.m_shared.m_value > 0 && InventoryGui.m_instance.m_dragItem.m_shared.m_name != CoinToken;
+        clicked = true;
+        // Add to the pocket
+        if (!itemIsValuable)
         {
-            bool itemIsValuable = InventoryGui.m_instance.m_dragItem.m_shared.m_value > 0 && InventoryGui.m_instance.m_dragItem.m_shared.m_name != CoinToken;
-            clicked = true;
-            // Add to the pocket
-            if (!itemIsValuable)
-            {
-                MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + InventoryGui.m_instance.m_dragAmount);
-            }
-            else
-            {
-                MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + (InventoryGui.m_instance.m_dragAmount * InventoryGui.m_instance.m_dragItem.m_shared.m_value));
-            }
-
-            CurrencyPocket.UpdatePocketUI();
-            if (InventoryGui.m_instance.m_dragAmount == InventoryGui.m_instance.m_dragItem.m_stack)
-            {
-                InventoryGui.m_instance.m_dragInventory.RemoveItem(InventoryGui.m_instance.m_dragItem);
-            }
-            else
-            {
-                InventoryGui.m_instance.m_dragInventory.RemoveItem(InventoryGui.m_instance.m_dragItem, InventoryGui.m_instance.m_dragAmount);
-            }
-
-            clicked = false;
-
-            InventoryGui.m_instance.SetupDragItem(null, null, 1);
-            InventoryGuiOnSplitOkPatch.throwAwayInventory = null!;
+            MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + InventoryGui.m_instance.m_dragAmount);
         }
+        else
+        {
+            MiscFunctions.UpdatePlayerCustomData(MiscFunctions.GetPlayerCoinsFromCustomData() + (InventoryGui.m_instance.m_dragAmount * InventoryGui.m_instance.m_dragItem.m_shared.m_value));
+        }
+
+        CurrencyPocket.UpdatePocketUI();
+        if (InventoryGui.m_instance.m_dragAmount == InventoryGui.m_instance.m_dragItem.m_stack)
+        {
+            InventoryGui.m_instance.m_dragInventory.RemoveItem(InventoryGui.m_instance.m_dragItem);
+        }
+        else
+        {
+            InventoryGui.m_instance.m_dragInventory.RemoveItem(InventoryGui.m_instance.m_dragItem, InventoryGui.m_instance.m_dragAmount);
+        }
+
+        clicked = false;
+
+        InventoryGui.m_instance.SetupDragItem(null, null, 1);
+        InventoryGuiOnSplitOkPatch.throwAwayInventory = null!;
     }
 
     private void TryCreateTooltip()

@@ -290,6 +290,12 @@ public class CurrencyPocket
         InventoryGuiUpdatePatch.ExtractButton.onClick = new Button.ButtonClickedEvent();
         InventoryGuiUpdatePatch.ExtractButton.onClick.AddListener(ExtractCoins);
 
+        var uiGamePad = InventoryGuiUpdatePatch.ExtractButton.GetComponent<UIGamePad>();
+        if (uiGamePad.m_hint) Object.Destroy(uiGamePad.m_hint);
+        uiGamePad.m_hint = null;
+        uiGamePad.m_zinputKey = string.Empty;
+        uiGamePad.m_keyCode = KeyCode.None;
+
         // Position the button
         RectTransform buttonRectTransform = InventoryGuiUpdatePatch.ExtractButton.GetComponent<RectTransform>();
         if (buttonRectTransform == null)
