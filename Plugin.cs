@@ -9,7 +9,7 @@ namespace CurrencyPocket;
 public class CurrencyPocketPlugin : BaseUnityPlugin
 {
     internal const string ModName = "CurrencyPocket";
-    internal const string ModVersion = "1.0.11";
+    internal const string ModVersion = "1.0.12";
     internal const string Author = "Azumatt";
     private const string ModGUID = $"{Author}.{ModName}";
     internal readonly Harmony _harmony = new(ModGUID);
@@ -28,7 +28,7 @@ public class CurrencyPocketPlugin : BaseUnityPlugin
     public void Start()
     {
         RapidLoadoutsCompat.Init();
-        ExtraSlots.FuckOff();
+        ExtraSlotsCompat.FuckOff();
     }
 
 
@@ -79,4 +79,6 @@ public struct Constants
     internal const string QuickStackStoreGUID = "goldenrevolver.quick_stack_store";
     internal const string JewelcraftingGUID = "org.bepinex.plugins.jewelcrafting";
     internal const string RapidLoadoutsGUID = "Azumatt.RapidLoadouts";
+    internal const string ExtraSlotsGuid = "shudnal.ExtraSlots";
+    internal const string EsSectionName = "Mods compatibility - Reduced inventory size";
 }
