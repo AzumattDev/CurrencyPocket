@@ -78,6 +78,9 @@
         <Reference Include="BepInEx">
             <HintPath>$(BepInExPath)\core\BepInEx.dll</HintPath>
         </Reference>
+        <Reference Include="ServerSync">
+          <HintPath>Libs\ServerSync.dll</HintPath>
+        </Reference>
         <Reference Include="System"/>
         <Reference Include="System.Core"/>
         <Reference Include="System.Data"/>
@@ -133,8 +136,9 @@
         <Content Include=".github\workflows\publish-mod.yml" />
         <Content Include=".gitignore"/>
         <Content Include="environment.props"/>
+        <Content Include="ILRepack.targets" />
         <Content Include="Libs\ServerSync.dll">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Content Include="LICENSE.txt"/>
         <Content Include="README.md"/>
@@ -145,6 +149,7 @@
     </ItemGroup>
     <ItemGroup>
         <None Include="App.config"/>
+        <None Include="packages.config" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Include="assets\download.png" />
@@ -249,6 +254,13 @@ System.IO.File.WriteAllText(ManifestFile, content);
         <Copy SourceFiles="@(NexusPackageFiles)" DestinationFolder="$(PackageDir)"/>
         <ZipDirectory SourceDirectory="$(PackageDir)" DestinationFile="Nexus\$(PackageName).zip" Overwrite="true"/>
         <RemoveDir Directories="$(PackageDir)"/>
+    </Target>
+    <Import Project="packages\ILRepack.Lib.MSBuild.Task.2.0.44.1\build\ILRepack.Lib.MSBuild.Task.targets" Condition="Exists('packages\ILRepack.Lib.MSBuild.Task.2.0.44.1\build\ILRepack.Lib.MSBuild.Task.targets')" />
+    <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+      <PropertyGroup>
+        <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105.The missing file is {0}.</ErrorText>
+      </PropertyGroup>
+      <Error Condition="!Exists('packages\ILRepack.Lib.MSBuild.Task.2.0.44.1\build\ILRepack.Lib.MSBuild.Task.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\ILRepack.Lib.MSBuild.Task.2.0.44.1\build\ILRepack.Lib.MSBuild.Task.targets'))" />
     </Target>
 
 </Project>

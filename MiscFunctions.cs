@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace CurrencyPocket;
 
@@ -83,18 +83,13 @@ public class MiscFunctions
             InventoryGuiOnSplitOkPatch.throwAwayInventory = new Inventory(CoinCountCustomData, coins.GetComponent<ItemDrop>().m_itemData.GetIcon(), 1, 1);
             InventoryGuiOnSplitOkPatch.throwAwayInventory.AddItem(coins, GetPlayerCoinsFromCustomData());
             InventoryGui.instance.ShowSplitDialog(InventoryGuiOnSplitOkPatch.throwAwayInventory.m_inventory.FirstOrDefault(), InventoryGuiOnSplitOkPatch.throwAwayInventory);
-            CurrencyPocket.CoinExtractionInProgress = true;
-            // TODO: Might add this as a config later, to extract all coins.
-            /*if (player.GetInventory().CanAddItem(coins, _coinCount))
+            // ShowSplitDialog resets the slider, so ctrl-for-everything has to happen after it
+            if (ZInput.GetKey(KeyCode.LeftControl) || ZInput.GetKey(KeyCode.RightControl))
             {
-                player.GetInventory().AddItem(coins, _coinCount);
-                _coinCount = 0;
-                UpdatePocketUI();
+                SplitDialog dialog = InventoryGui.instance.m_splitDialog;
+                dialog.SliderValue = dialog.m_splitSlider.maxValue;
             }
-            else
-            {
-                 player.Message(MessageHud.MessageType.Center, "$inventory_full");
-            }*/
+            CurrencyPocket.CoinExtractionInProgress = true;
         }
     }
 

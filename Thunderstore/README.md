@@ -30,6 +30,14 @@ compatible with the buttons from QuickStackStore by GoldenRevolver.
 
 ![](https://i.imgur.com/DHD3ogl.gif)
 
+## Configuration
+
+### Valuable Items Settings
+
+- **AllowValuableItems** - When `false`: Only coins can be deposited
+- **AllowValuableItems** - When `true` and **AllowedValuablePrefabs** is empty: All valuable items can be converted to coins
+- **AllowValuableItems** - When `true` and **AllowedValuablePrefabs** = `Ruby,Amber`: Only Ruby and Amber prefabs (plus coins) can be deposited
+
 <details>
 <summary><b>Installation Instructions</b></summary>
 

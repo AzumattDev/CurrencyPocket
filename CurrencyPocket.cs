@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using TMPro;
 using UnityEngine.UI;
 using static CurrencyPocket.MiscFunctions;
@@ -75,13 +75,18 @@ public class CurrencyPocket
                                     rect.anchoredPosition += new Vector2(0, -45);
                                     break;
                                 case WeightName when !IsOverlappingUIModInstalled():
-                                    // Do nothing
                                     break;
                                 default:
                                     rect.anchoredPosition += new Vector2(0, 45);
                                     break;
                             }
                         }
+                    }
+
+                    if (child.name == "selected_frame")
+                    {
+                        child.transform.Find("selected (2)").gameObject.SetActive(false); // Armor
+                        child.transform.Find("selected (3)").gameObject.SetActive(false); // Weight
                     }
                 }
             }
@@ -275,9 +280,7 @@ public class CurrencyPocket
     private static void CreateButton(InventoryGui __instance)
     {
         if (InventoryGuiUpdatePatch.ExtractButton != null)
-        {
             return;
-        }
 
         // Clone the take all button and add it to the inventory (InventoryGui.instance.m_takeAllButton)
         InventoryGuiUpdatePatch.ExtractButton = Object.Instantiate(__instance.m_takeAllButton, InventoryGuiUpdatePatch.pocketUI.transform);
@@ -334,7 +337,7 @@ static class InventoryGuiOnSplitOkPatch
         if (__instance.m_splitItem?.m_shared.m_name != CoinToken || !CurrencyPocket.CoinExtractionInProgress) return;
         // Needed because the split inventory sometimes is auto set to the player's inventory. Workaround for now.
         __instance.m_splitInventory = throwAwayInventory;
-        UpdatePlayerCustomData(GetPlayerCoinsFromCustomData() - (int)__instance.m_splitSlider.value);
+        UpdatePlayerCustomData(GetPlayerCoinsFromCustomData() - (int)__instance.m_splitDialog.SliderValue);
         CurrencyPocket.UpdatePocketUI();
         CurrencyPocket.CoinExtractionInProgress = false;
     }
